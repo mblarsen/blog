@@ -32,8 +32,6 @@
             <div class="container flex items-center px-4 mx-auto max-w-8xl lg:px-8">
                 <div class="flex items-center">
                     <a href="/" title="{{ $page->siteName }} home" class="inline-flex items-center">
-                        <img class="h-8 mr-3 md:h-10" src="/assets/img/logo.svg" alt="{{ $page->siteName }} logo" />
-
                         <h1 class="my-0 text-lg font-semibold text-blue-800 md:text-2xl hover:text-blue-600">{{ $page->siteName }}</h1>
                     </a>
                 </div>

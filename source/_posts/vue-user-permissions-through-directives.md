@@ -13,7 +13,7 @@ This guide is a post-mortem on my experiences from writing [vue-browser-acl](htt
 
 At the end of this article, we will end up with Vue directive that looks something like this:
 
-```
+```html
 <button v-can:delete="post">Delete</button>
 ```
 
@@ -30,25 +30,20 @@ Vue provides you with `v-if` and `v-show` out of the box and I’m sure your tem
 
 They are the equivalent of the _if-else_ control structure we know from our code and, not surprisingly, we often end up having long and deep conditions that force you to stop in order to read them to understand.
 
-```
+```html
 <button v-if="job.users.contains(user) && user.isManager()">Delete</button>
 ```
 
 Often in Vue you would extract these into computed properties or a component method to hide away the complexity:
 
-```
-export default {
-  methods: {
-    canDelete(job) {
-      return this.job.users.contains(this.user) && this.user.isManager()
-    }
-  }
-}
+```html
+export default { methods: { canDelete(job) { return
+this.job.users.contains(this.user) && this.user.isManager() } } }
 ```
 
 This lets us simplify the button’s condition:
 
-```
+```html
 <button v-if="canDelete(job)">Delete</button>
 ```
 
@@ -56,7 +51,7 @@ However, this doesn’t scale well. You will have to duplicate this or similar c
 
 Mix-ins are a great way to leverage code duplication. You can also extend the vue prototype like we’ve done for years in JavaScript. (I’ll refer to both approaches as mix-ins for simplicity). Mix-ins allow us to consolidate all the access code in one place and make it available from all Vue components. For example, we could add a `$can` mix-in (in fact, we will do that later) and now transform the button to something like this:
 
-```
+```html
 <button v-if="$can('delete', job)">Delete</button>
 ```
 
@@ -72,7 +67,7 @@ The library we are using is kind of agnostic about users and roles as long as yo
 
 As to the models in your app, there is distinction between classes and instances. When you have an instance of something, say a post, and you want to determine if an edit button should be enabled, you would likely check if the current user is the owner of the post.
 
-```
+```html
 acl.rule('edit', Post, (user, post) => user.id === post.userId)
 ```
 
@@ -80,8 +75,8 @@ The point is that for the verb _edit_ we will need an instance of a post to dete
 
 For a verb like _create,_ on the other hand, we won’t be able to provide an instance since the post doesn’t exist yet. But we will have to pass something for the ACL to be able to determine if the user should be able to create a post:
 
-```
-acl.rule('create', Post, (user) => user.isRegistered())
+```js
+acl.rule("create", Post, (user) => user.isRegistered())
 ```
 
 So in this case, we can either pass the class of Post or a string ‘Post’ instead of an actual instance.
@@ -94,7 +89,7 @@ This is not terribly important, but it will guide us in some of the choices we�
 
 Directives and mix-ins alike are plugged into Vue by calling `use(plugin)`. It expects an object with a method called `install`. Vue calls the method and includes itself as the first argument. And each argument you pass to `use` after that will be passed to install as well. (see [plugins](https://vuejs.org/v2/guide/plugins.html) section)
 
-```
+```js
 Vue.use({
   install(Vue, options, moreOptions, evenMoreOptions) {
   ...
@@ -117,11 +112,11 @@ You can also simply pass in the plugin and then do all the configuration in the 
 
 It could look something like this:
 
-```
-import Acl from 'vue-browser-acl'
+```js
+import Acl from "vue-browser-acl"
 
-Vue.use(Acl, user, acl => {
-  acl.rule('edit', 'Post', (user, post) => user.id === post.userId)
+Vue.use(Acl, user, (acl) => {
+  acl.rule("edit", "Post", (user, post) => user.id === post.userId)
 })
 ```
 
@@ -137,11 +132,9 @@ Before starting on the directive, we will add the mix-in or helper function that
 
 Let’s look at our plugin and how we can provide the proposed API.
 
-```
+```js
 import Acl from 'browser-acl'
-```
 
-```
 export default {
   install: function (Vue, user, callback, options) {
     const acl = new Acl(options) callback(acl)
@@ -158,21 +151,21 @@ _I use [poi](https://poi.js.org) to build and bundle the package. Poi lets you u
 
 Our ACL is now hooked up but we are still unable to do anything with it. Let’s add the helper function before starting on the directive.
 
-```
-import Acl from 'browser-acl'
+```js
+import Acl from "browser-acl"
 
 export default {
-  install: function (Vue, user, callback, options) {
+  install: function(Vue, user, callback, options) {
     const acl = new Acl(options)
     callback(acl)
     Vue.prototype.$can = (...args) => acl.can(user, ...args)
-  }
+  },
 }
 ```
 
 Adding a helping function is easy. We add a function `$can` to the `Vue.prototype` after which all Vue instances can access the helper function. That means we make use of the function already:
 
-```
+```html
 <button v-if="$can('edit', post)">Edit</button>
 ```
 
@@ -186,9 +179,9 @@ The [documentation for directives](https://vuejs.org/v2/guide/custom-directive.h
 
 This was the example we started out with — accompanied with a few other familiar “faces”:
 
-```
+```html
 <button v-can:delete="post">Delete</button>
-<input v-on:keyup.enter.prevent="validate">
+<input v-on:keyup.enter.prevent="validate" />
 <a class="btn btn-link" @click.prevent="save">Save</a>
 ```
 
@@ -213,7 +206,7 @@ Modifiers can also be used as **_passing additional arguments_**. Although this 
 
 So if, for example, we were making a media query directive and wanted to use modifiers for arguments:
 
-```
+```html
 <div v-mq.min.764.max.1024>Content only shown for medium devices</div>
 ```
 
@@ -245,7 +238,7 @@ As we’ve already departed from the idea of providing arguments as a value obje
 
 That leaves us with:
 
-```
+```html
 <button v-can:edit.disable="post">Edit</button>
 ```
 
@@ -272,7 +265,7 @@ The **binding argument** gives you access to the argument, modifiers, the value 
 
 For a complete list of binding properties, [see the docs](https://vuejs.org/v2/guide/custom-directive.html#Directive-Hook-Arguments).
 
-```
+```js
 ...
 Vue.directive('can', function (el, bindings, vnode) {
   const behaviour = binding.modifiers.disable ? 'disable' : 'hide'
@@ -297,7 +290,7 @@ In the event the user is not authorized, e.g. to edit a post, then we deal with 
 
 The easy case is _disable._ We turn on the `disabled` property of the element. That is the equivalent of:
 
-```
+```html
 <button disabled>Edit</button>
 ```
 
@@ -320,14 +313,14 @@ Just like a Vue component has lifecycle hooks (_created_, _mounted_, _before\*_,
 
 For that reason, Vue provides a [function shorthand](https://vuejs.org/v2/guide/custom-directive.html#Function-Shorthand) which is what we used in our implementation. This assigns the update function to both hooks.
 
-```
-Vue.directive('can', canImplementation)
+```js
+Vue.directive("can", canImplementation)
 ```
 
 is equivalent to:
 
-```
-Vue.directive('can', { bind: ourImplementation, update: ourImplementation})
+```js
+Vue.directive("can", { bind: ourImplementation, update: ourImplementation })
 ```
 
 **Bind** happens once when the directive has been associated with an element (el) after which, it is never called again.
