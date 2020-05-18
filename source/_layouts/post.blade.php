@@ -50,4 +50,14 @@
             @endif
         </div>
     </nav>
+
+    <div class="my-8">
+        <script src="https://utteranc.es/client.js"
+                repo="mblarsen/blog"
+                issue-term="pathname"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+    </div>
 @endsection
