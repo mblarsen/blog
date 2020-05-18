@@ -3,7 +3,7 @@
     <title>Blog</title>
     <link href="https://blog.cheesefi.com" />
     <link type="application/atom+xml" rel="self" href="https://blog.cheesefi.com/blog/feed.atom" />
-    <updated>2020-05-18T13:29:05+00:00</updated>
+    <updated>2020-05-18T14:33:15+00:00</updated>
     <id>https://blog.cheesefi.com/blog/feed.atom</id>
     <author>
         <name>Michael Bøcker-Larsen</name>
@@ -23,7 +23,7 @@
 
 <p>At the end of this article, we will end up with Vue directive that looks something like this:</p>
 
-<pre><code>&lt;button v-can:delete="post"&gt;Delete&lt;/button&gt;
+<pre><code class="language-html">&lt;button v-can:delete="post"&gt;Delete&lt;/button&gt;
 </code></pre>
 
 <p>We will cover these topics:</p>
@@ -41,30 +41,25 @@
 
 <p>They are the equivalent of the <em>if-else</em> control structure we know from our code and, not surprisingly, we often end up having long and deep conditions that force you to stop in order to read them to understand.</p>
 
-<pre><code>&lt;button v-if="job.users.contains(user) &amp;&amp; user.isManager()"&gt;Delete&lt;/button&gt;
+<pre><code class="language-html">&lt;button v-if="job.users.contains(user) &amp;&amp; user.isManager()"&gt;Delete&lt;/button&gt;
 </code></pre>
 
 <p>Often in Vue you would extract these into computed properties or a component method to hide away the complexity:</p>
 
-<pre><code>export default {
-  methods: {
-    canDelete(job) {
-      return this.job.users.contains(this.user) &amp;&amp; this.user.isManager()
-    }
-  }
-}
+<pre><code class="language-html">export default { methods: { canDelete(job) { return
+this.job.users.contains(this.user) &amp;&amp; this.user.isManager() } } }
 </code></pre>
 
 <p>This lets us simplify the button’s condition:</p>
 
-<pre><code>&lt;button v-if="canDelete(job)"&gt;Delete&lt;/button&gt;
+<pre><code class="language-html">&lt;button v-if="canDelete(job)"&gt;Delete&lt;/button&gt;
 </code></pre>
 
 <p>However, this doesn’t scale well. You will have to duplicate this or similar code to all of your components whenever you want to check the user’s permissions for a certain action or view.</p>
 
 <p>Mix-ins are a great way to leverage code duplication. You can also extend the vue prototype like we’ve done for years in JavaScript. (I’ll refer to both approaches as mix-ins for simplicity). Mix-ins allow us to consolidate all the access code in one place and make it available from all Vue components. For example, we could add a <code>$can</code> mix-in (in fact, we will do that later) and now transform the button to something like this:</p>
 
-<pre><code>&lt;button v-if="$can('delete', job)"&gt;Delete&lt;/button&gt;
+<pre><code class="language-html">&lt;button v-if="$can('delete', job)"&gt;Delete&lt;/button&gt;
 </code></pre>
 
 <p>Although mix-ins are vastly better and for most parts get the job done, I believe that we can do better with directives.</p>
@@ -79,14 +74,14 @@
 
 <p>As to the models in your app, there is distinction between classes and instances. When you have an instance of something, say a post, and you want to determine if an edit button should be enabled, you would likely check if the current user is the owner of the post.</p>
 
-<pre><code>acl.rule('edit', Post, (user, post) =&gt; user.id === post.userId)
+<pre><code class="language-html">acl.rule('edit', Post, (user, post) =&gt; user.id === post.userId)
 </code></pre>
 
 <p>The point is that for the verb <em>edit</em> we will need an instance of a post to determine the permission.</p>
 
 <p>For a verb like <em>create,</em> on the other hand, we won’t be able to provide an instance since the post doesn’t exist yet. But we will have to pass something for the ACL to be able to determine if the user should be able to create a post:</p>
 
-<pre><code>acl.rule('create', Post, (user) =&gt; user.isRegistered())
+<pre><code class="language-js">acl.rule("create", Post, (user) =&gt; user.isRegistered())
 </code></pre>
 
 <p>So in this case, we can either pass the class of Post or a string ‘Post’ instead of an actual instance.</p>
@@ -99,7 +94,7 @@
 
 <p>Directives and mix-ins alike are plugged into Vue by calling <code>use(plugin)</code>. It expects an object with a method called <code>install</code>. Vue calls the method and includes itself as the first argument. And each argument you pass to <code>use</code> after that will be passed to install as well. (see <a href="https://vuejs.org/v2/guide/plugins.html">plugins</a> section)</p>
 
-<pre><code>Vue.use({
+<pre><code class="language-js">Vue.use({
   install(Vue, options, moreOptions, evenMoreOptions) {
   ...
   }
@@ -123,10 +118,10 @@
 
 <p>It could look something like this:</p>
 
-<pre><code>import Acl from 'vue-browser-acl'
+<pre><code class="language-js">import Acl from "vue-browser-acl"
 
-Vue.use(Acl, user, acl =&gt; {
-  acl.rule('edit', 'Post', (user, post) =&gt; user.id === post.userId)
+Vue.use(Acl, user, (acl) =&gt; {
+  acl.rule("edit", "Post", (user, post) =&gt; user.id === post.userId)
 })
 </code></pre>
 
@@ -142,10 +137,9 @@ Vue.use(Acl, user, acl =&gt; {
 
 <p>Let’s look at our plugin and how we can provide the proposed API.</p>
 
-<pre><code>import Acl from 'browser-acl'
-</code></pre>
+<pre><code class="language-js">import Acl from 'browser-acl'
 
-<pre><code>export default {
+export default {
   install: function (Vue, user, callback, options) {
     const acl = new Acl(options) callback(acl)
   }
@@ -161,20 +155,20 @@ Vue.use(Acl, user, acl =&gt; {
 
 <p>Our ACL is now hooked up but we are still unable to do anything with it. Let’s add the helper function before starting on the directive.</p>
 
-<pre><code>import Acl from 'browser-acl'
+<pre><code class="language-js">import Acl from "browser-acl"
 
 export default {
-  install: function (Vue, user, callback, options) {
+  install: function(Vue, user, callback, options) {
     const acl = new Acl(options)
     callback(acl)
     Vue.prototype.$can = (...args) =&gt; acl.can(user, ...args)
-  }
+  },
 }
 </code></pre>
 
 <p>Adding a helping function is easy. We add a function <code>$can</code> to the <code>Vue.prototype</code> after which all Vue instances can access the helper function. That means we make use of the function already:</p>
 
-<pre><code>&lt;button v-if="$can('edit', post)"&gt;Edit&lt;/button&gt;
+<pre><code class="language-html">&lt;button v-if="$can('edit', post)"&gt;Edit&lt;/button&gt;
 </code></pre>
 
 <p>It is important to point out that <code>post</code> must exist as data (or computed value) on the component or must reference a variable in a loop (<code>v-for="post in posts"</code>).</p>
@@ -187,8 +181,8 @@ export default {
 
 <p>This was the example we started out with — accompanied with a few other familiar “faces”:</p>
 
-<pre><code>&lt;button v-can:delete="post"&gt;Delete&lt;/button&gt;
-&lt;input v-on:keyup.enter.prevent="validate"&gt;
+<pre><code class="language-html">&lt;button v-can:delete="post"&gt;Delete&lt;/button&gt;
+&lt;input v-on:keyup.enter.prevent="validate" /&gt;
 &lt;a class="btn btn-link" @click.prevent="save"&gt;Save&lt;/a&gt;
 </code></pre>
 
@@ -215,7 +209,7 @@ export default {
 
 <p>So if, for example, we were making a media query directive and wanted to use modifiers for arguments:</p>
 
-<pre><code>&lt;div v-mq.min.764.max.1024&gt;Content only shown for medium devices&lt;/div&gt;
+<pre><code class="language-html">&lt;div v-mq.min.764.max.1024&gt;Content only shown for medium devices&lt;/div&gt;
 </code></pre>
 
 <p>This would not work since we wouldn’t know if min or max is referring to 764 or 1024. You would have to device some clever logic to make it work at least.</p>
@@ -246,7 +240,7 @@ export default {
 
 <p>That leaves us with:</p>
 
-<pre><code>&lt;button v-can:edit.disable="post"&gt;Edit&lt;/button&gt;
+<pre><code class="language-html">&lt;button v-can:edit.disable="post"&gt;Edit&lt;/button&gt;
 </code></pre>
 
 <ul>
@@ -276,7 +270,7 @@ export default {
 
 <p>For a complete list of binding properties, <a href="https://vuejs.org/v2/guide/custom-directive.html#Directive-Hook-Arguments">see the docs</a>.</p>
 
-<pre><code>...
+<pre><code class="language-js">...
 Vue.directive('can', function (el, bindings, vnode) {
   const behaviour = binding.modifiers.disable ? 'disable' : 'hide'
   const ok = acl.can(user, binding.arg, binding.value)
@@ -300,7 +294,7 @@ Vue.directive('can', function (el, bindings, vnode) {
 
 <p>The easy case is <em>disable.</em> We turn on the <code>disabled</code> property of the element. That is the equivalent of:</p>
 
-<pre><code>&lt;button disabled&gt;Edit&lt;/button&gt;
+<pre><code class="language-html">&lt;button disabled&gt;Edit&lt;/button&gt;
 </code></pre>
 
 <p>For <em>hide</em> it is a bit more complicated. The basic idea is that you replace the content with an empty comment <code>&lt;!-- —-&gt;</code>. You can <a href="https://github.com/mblarsen/vue-browser-acl/blob/4e3bb90d2ba4fcc3edd30b27737f4531dc464329/index.js#L136-L163">see the code here</a>.</p>
@@ -324,12 +318,12 @@ Vue.directive('can', function (el, bindings, vnode) {
 
 <p>For that reason, Vue provides a <a href="https://vuejs.org/v2/guide/custom-directive.html#Function-Shorthand">function shorthand</a> which is what we used in our implementation. This assigns the update function to both hooks.</p>
 
-<pre><code>Vue.directive('can', canImplementation)
+<pre><code class="language-js">Vue.directive("can", canImplementation)
 </code></pre>
 
 <p>is equivalent to:</p>
 
-<pre><code>Vue.directive('can', { bind: ourImplementation, update: ourImplementation})
+<pre><code class="language-js">Vue.directive("can", { bind: ourImplementation, update: ourImplementation })
 </code></pre>
 
 <p><strong>Bind</strong> happens once when the directive has been associated with an element (el) after which, it is never called again.</p>
@@ -355,6 +349,356 @@ Vue.directive('can', function (el, bindings, vnode) {
 <p>If you got this far, thank you for your attention :)</p>
 
 <p>P.S. Do check out <code>poi</code> and <code>poi-preset-karma</code> which let you develop and unit test Vue components with zero config.</p>
+    ]]></content>
+</entry>
+            <entry>
+    <id>https://blog.cheesefi.com/blog/wordpress-style-shortcodes-using-vue</id>
+    <link type="text/html" rel="alternate" href="https://blog.cheesefi.com/blog/wordpress-style-shortcodes-using-vue" />
+    <title>WordPress-style shortcodes using Vue</title>
+    <published>2017-03-15T00:00:00+00:00</published>
+    <updated>2017-03-15T00:00:00+00:00</updated>
+    <author>
+        <name>Michael Bøcker-Larsen</name>
+    </author>
+    <summary type="html">If you have worked with WordPress as a blogger or developer before, you will undoubtedly know that most sites are built by extensive plugins that spit out shortcodes. To me, WordPress has always seemed a bit like a hack. Everything is squeezed into the......</summary>
+    <content type="html"><![CDATA[
+        <p>If you have worked with WordPress as a blogger or developer before, you will undoubtedly know that most sites are built by extensive plugins that spit out <strong>shortcodes</strong>. To me, WordPress has always seemed a bit like a hack. Everything is squeezed into the <code>Post</code> model, whose main body contains more content types and ad hoc data types, depending what content-plugins you've installed. Yikes!</p>
+
+<p>However, this is how it works and the wast number of themes, plugins, and users must be a testament to its success.</p>
+
+<blockquote>
+  <p><code>[gallery id="123" size="medium"]</code></p>
+</blockquote>
+
+<p>That is a shortcode from the documentation of <a href="https://codex.wordpress.org/Shortcode_API">Wordpress' Shortcode API</a>. Shortcodes are easy to read and understand. Although most of them are generated by a UI tool, anyone could author them by hand. Even as a blogger, you’d most likely have to every now and then.</p>
+
+<p>The idea of shortcodes is that they provide a super simple content and layout language. When I was asked to help build a project that utilizes shortcodes in a themeable Vue.js application, I was quite excited to see how you could map these shortcodes onto Vue.js components and layout. This concept could provide a tool for site owners to customize the site beyond what was achievable with CSS.</p>
+
+<p>The app we are building has a number of pages. Each of the pages has a few areas that can be customized; some have more customizable areas than others. For example, a checkout page in a web shop would normally have less customization options than the shop’s front page, where almost all content and layout could be changed in various ways. We call these areas <strong>slots</strong>.</p>
+
+<p>The general idea is to come up with a number of basic components that a theme-developer can style and provide a basic layout for. The application structure remains the same in terms of pages, but the layout and content in each of the slots can vary.</p>
+
+<h2>Goal: Turn shortcodes into Vue components</h2>
+
+<p>Our goal in the building of this app is to be able to add both layout and content components to our shortcode Vue.js integration. For example:</p>
+
+<pre><code class="language-html">&lt;h2&gt;Products&lt;/h2&gt;
+[row] [col class="s6"] [product-list name="featured" use="product-card" num=3/]
+[/col] [col class="s6"] [product-list name="bestsellers" use="product-card"
+num=3/] [/col] [/row]
+</code></pre>
+
+<p>In the above example, the row and col(umn) tags represent layout components whereas product-list and product-card will be turned into content components.</p>
+
+<p>Since Vue is all about creating new components and extending the HTML vocabulary, we thought we’d use our Vue components directly. However, the app we are building excessively targets users in the WordPress community. Therefore, we wanted to try this approach.</p>
+
+<p>Basically these are the steps we need to go through:</p>
+
+<ol>
+<li>Convert the string we get from the backend into some other data structure so we can alter the layout and content.</li>
+<li>Figure out how we can map the codes to our components, like the ProductList or a ProductCard.</li>
+<li>Figure out how to use Vue.js to construct a new component that can instantiate our components.</li>
+</ol>
+
+<p>.. and then finally: Demo Time!</p>
+
+<h3>Step 1: Abstract Syntax Tree</h3>
+
+<blockquote>
+  <p>Convert the string we get from the backend into some other data structure so we can reason about layout and content.</p>
+</blockquote>
+
+<p>This first step is not so interesting. I have built a small library, <a href="https://github.com/mblarsen/shortcode-tokenizer">shortcode-tokenizer</a>, for lexing the sample block above and spitting out an Abstract Syntax Tree (AST).</p>
+
+<p>From the example above, we get an array of nested objects similar to this:</p>
+
+<pre><code class="language-js">[
+    {
+        type: 'TEXT',
+        body: "&lt;h1&gt;Products&lt;/h1&gt;"
+        pos: 0
+    },
+    {
+        type: 'OPEN',
+        name: 'row',
+        pos: 18,
+        body: '[row]',
+        isClosed: true,
+        params: {},
+        children: [
+            ... a whitespace TEXT token ...,
+            {
+                type: 'OPEN',
+                name: 'col',
+                pos: 26,
+                body: '[col class="s6"]',
+                isClosed: true,
+                params: {
+                    class: 's6'
+                },
+                children: [ ... and so on ... ]
+             }
+        ]
+    }
+]
+</code></pre>
+
+<p>It provides us with a nested object structure that has all parameters prepared and all the elements labeled as text, self-closing, or regular shotcode.</p>
+
+<p>We will use this data structure as the source of what to build in Vue.</p>
+
+<h3>Step 2: Mapping codes to components</h3>
+
+<blockquote>
+  <p>Figure out how we map the codes to our components like the <code>ProductList</code> or a <code>ProductCard</code>.</p>
+</blockquote>
+
+<p>Vue components are typically named according to the import of the parent component, but Vue is quite flexible and you can reference your components in a number of ways: <code>TitleCase</code>, <code>lowerTitleCase</code>, and <code>kebab-case</code>. The latter is the same syntax we would use for our shortcodes, so this shouldn't be too hard. In most cases, we can just use the same name to refer to the Vue components:</p>
+
+<pre><code class="language-js">export default {
+  components: {
+    ProductList,
+  },
+}
+</code></pre>
+
+<p><code>ProductList</code> can now, as you know, be referenced as <code>&lt;product-list&gt;</code> in the component template, thanks to a little vue-magic. Vue exposes its name tranformation functions through <code>Vue.util</code>. We will make use of them later.</p>
+
+<p>An argument for making an explicit map: the code name and component name may differ because they follow different guidelines. For example, we have used <code>[col]</code> for a column above, which is a shorthand for a component name. I prefer full words as it reads more easily, but in shortcode land, it's okay to go with the short form — it mirrors the <code>[row]</code> code well (things that look alike...).</p>
+
+<p>So although we don’t actually need to map the code names, this would still be a good idea because it wouldn’t mess with the way we like to work with Vue.</p>
+
+<p>Another benefit is that we can refer to this map during the parsing. Additionally, in case we come across an unknown code (by absence in the map), we can treat it as an error in the same place as syntax errors—rather than having to let the errors occur in the Vue runtime when trying to instantiate components that do not exist.</p>
+
+<p>So let us create a map:</p>
+
+<pre><code class="language-js">const codeMap = {
+  col: "column",
+  row: "row",
+  "product-list": "product-list",
+}
+</code></pre>
+
+<p>The <strong>key</strong> is the shortcode and the <strong>value</strong> is the kebab-cased name of our Vue components.</p>
+
+<h3>Step 3: Wrapping up (or getting started)</h3>
+
+<blockquote>
+  <p>Figure out how to use Vue to construct a new component that can instantiate our components.</p>
+</blockquote>
+
+<p>Now that we have an AST, we need to parse or render into templates and components using the map we defined in the previous step.</p>
+
+<p>Vue provides a few built-in components that can make your pages more dynamic in the sense that you don’t have to specify what components are rendered or how they are rendered beforehand. These are <code>&lt;component&gt;</code> and <code>&lt;slot&gt;</code> respectively.</p>
+
+<p>The <code>&lt;component&gt;</code> component’s functionality is close to what we want. However, we have to include all our components on every page and in every parent component where we want to use or shortcode slot, since the slot, in theory, could contain references to all of our components.</p>
+
+<pre><code class="language-vue">&lt;template&gt;
+  &lt;component :is="chosenComponent"&gt;&lt;/component&gt;
+&lt;/template&gt;
+&lt;script&gt;
+import Row from "components/Row"
+import Column from "components/Column"
+import ProductList from "components/ProductList"
+import ProductCard from "components/ProductCard"
+// ... and so on ...
+
+export default {
+  components: {
+    Row,
+    Column,
+    ProductList,
+    ProductCard,
+    // ... and so on  ...
+  },
+  data() {
+    return { chosenComponent: "product-list" }
+  },
+}
+&lt;/script&gt;
+</code></pre>
+
+<p>This a bit cumbersome to say the least. We don’t want to repeat this for each parent component. This chore needs to be encapsulated as well.</p>
+
+<h3>Requirements</h3>
+
+<p>So let's wrap this up. We will make a new component that is similar to <code>&lt;component&gt;</code>, but one that has knowledge of all the components that we want to expose to the shortcode slot. We will call this <code>&lt;code-slot&gt;</code>.</p>
+
+<p>But first, recall our template is a mixture of text (HTML) and shortcodes. Basically, we can have text all around and between each of the open and close codes. We need to add this to the template as well.</p>
+
+<p>When you have highly dynamic content, <code>&lt;component&gt;</code> and <code>&lt;slot&gt;</code> might not be enough. In that case, you can write your own render function.</p>
+
+<p>(Internally, all your templates are turned into render functions.)</p>
+
+<p>Our component acts as a controller in terms of what gets rendered but doesn’t add any value content or functionality besides the content of the slot. For these kinds of scenarios, you would go for a <a href="https://vuejs.org/v2/guide/render-function.html#Functional-Components">functional component</a>, because it has less overhead as it does not maintain state. You would simply pass on control to another component. However, since we also have to render the text, we don’t have a single component that can handle all our needs. For this reason, we will use a regular component.</p>
+
+<p>(If anyone knows if and how the following can be made as a functional component, I would love to learn how!)</p>
+
+<p>Here goes. We will need Vue and the tokenizer:</p>
+
+<pre><code class="language-vue">// components/CodeSlot.vue import { default as Tokenizer } from
+'shortcode-tokenizer' import Vue from 'vue'
+</code></pre>
+
+<p>We also want to import all the components we want to include as shortcodes:</p>
+
+<pre><code class="language-js">import Row from "components/Row"
+import Column from "components/Column"
+import ProductList from "components/ProductList"
+import ProductCard from "components/ProductCard"
+</code></pre>
+
+<p>Then we add our map, but with a little twist. We need the map in two cases.</p>
+
+<ol>
+<li>to get the kebab-cased name for building the template</li>
+<li>to pass into the <code>components:</code> property of our component, so instead of mapping from code to component name, we will map directly to the imported component:</li>
+</ol>
+
+<pre><code class="language-js">const codeMap = {
+  row: Row,
+  column: Column,
+  col: Column,
+  "product-list": ProductList,
+  "product-card": ProductCard,
+}
+
+const allComponents = Object.values(codeMap).reduce((all, c) =&gt; {
+  all[Vue.util.hyphenate(c.name)] = c
+  return all
+}, {})
+</code></pre>
+
+<p>Note that we have both <code>col</code> and <code>column</code> in <code>codeMap</code> — this means that both can be used as shortcodes. However, Vue will complain if you try to use <code>col</code> because this is already an HTML tag. Instead of using the code map directly, we'll map it to a new object where the key is based on a hyphenated (kebab) version of the component’s name.</p>
+
+<p>(Note: if you are using Webpack or something similar, you’ll need to add a <code>name:</code> property to your components. Otherwise, the name will be an odd internal Webpack value.)</p>
+
+<h3>The Component</h3>
+
+<p>So let's start to flesh out the actual component:</p>
+
+<pre><code class="language-js">export default {
+    props: {
+        content: {
+            type: String,
+            required: true
+        },
+        strict: {
+            type: Boolean,
+            default: true
+        }
+    },
+    methods: {
+        renderContent() {
+            // Turn AST into template and handle syntax error
+        }
+    },
+    created: {
+        this.tokenizer = new Tokenizer()
+    },
+    render(h) {
+        return h(Vue.component('code-wrapper', {
+            template: this.renderContent(),
+            components: allComponents
+        }))
+    }
+}
+</code></pre>
+
+<p>The idea behind this approach is to programmatically create yet another component — <code>&lt;code-wrapper&gt;</code> — as a child of our <code>&lt;code-slot&gt;</code> component. In our template code of a parent component, we include the code slot:</p>
+
+<pre><code class="language-html">&lt;aside&gt;
+  &lt;code-slot :content="sidebarContent"&gt;&lt;/code-slot&gt;
+&lt;/aside&gt;
+</code></pre>
+
+<p>So say that we put a product list in the sidebar slot:</p>
+
+<pre><code class="language-html">&lt;h3&gt;Featured&lt;/h3&gt;
+[product-list name="featured" num=3 use="product-card"/]
+</code></pre>
+
+<p>Then our Vue hierarchy will end up looking like this:</p>
+
+<p><img src="/assets/img/vue-wordpress-inspector.png" alt="Vue hierarchy from the Chrome developer tool" />
+(CodeSlot is our controlling component that creates CodeWrapper which is a template that contains both HTML and our custom component ProductList)</p>
+
+<h3>Rendering</h3>
+
+<p>I will not cover the entire rendering process but you can look into it more in <a href="https://gist.github.com/mblarsen/f628fc3c196b5f58d326242061922446">this gist</a> which includes the component in its entirety.</p>
+
+<p>The body of this function can be kept pretty simply. An important part is how we handle syntax errors to prevent our Vue application from running astray.</p>
+
+<pre><code class="language-js">export default {
+    ...
+    methods: {
+      renderContent() {
+        try {
+          let ast = this.tokenizer
+            .input(this.content)
+            .ast()
+          let content = ast
+            .map(renderToken)
+            .join('')
+          return ensureOneRoot(ast, content)
+        } catch (err) {
+          console.error(err)
+          return `&lt;div class="error"&gt;${err.message}&lt;/div&gt;`
+        }
+      }
+    }
+    ...
+}
+</code></pre>
+
+<p>Our content prop value (from our parent) is passed into the tokenizer, which returns an AST, an array of root tokens. We pass each token into render function (not shown here), which returns a part of our final template that we then join with all the other parts. Lastly, before returning, we ensure that the generated template only has one root — a requirement of Vue components.</p>
+
+<p>In the rendering process, I’m simply passing the tokens through a series of transformer functions recursively. As an example, this is the render function for codes that has an open and a close part:</p>
+
+<pre><code class="language-js">function renderOpen(token) {
+  if (token.type === Tokenizer.OPEN) {
+    let name = getComponentName(token)
+    let params = renderParams(token)
+    let children = token.children.map(renderToken).join("")
+    token.output = `&lt;${name}${params}&gt;${children}&lt;/${name}&gt;`
+  }
+  return token
+}
+</code></pre>
+
+<p>You don’t have to mirror AST exactly. You can skip nodes, add new ones, or as in this example, the <code>keep-alive</code> parameter is converted into a wrapper of the component:</p>
+
+<pre><code class="language-js">// example input: [product-list keep-alive/]
+function wrapKeepAlive(token) {
+  if (typeof token.params["keep-alive"] !== "undefined") {
+    token.output = `&lt;keep-alive&gt;${token.output}&lt;/keep-alive&gt;`
+  }
+  return token
+}
+</code></pre>
+
+<h3>Error Handling</h3>
+
+<p>You should naturally validate your codes in all the authored content before publishing, but we will handle it here nonetheless. Besides, this component can also be used in the CMS, and the <a href="https://github.com/mblarsen/shortcode-tokenizer">shortcode-tokenizer</a> can be used in the backend if you run Node.js.</p>
+
+<p>For this demo, the handling is no more than outputting the error with a token and outputting it to the console.</p>
+
+<h2>Demo time</h2>
+
+<p>Our next step will be to figure out how well this works with theming. For now, let’s see what we have achieved.</p>
+
+<p>Questions and feedback are most welcome. I’m still relatively new to Vue.js myself. If you’ve just started learning Vue.js, make sure to check out <a href="https://www.codementor.io/javascript/tutorial/getting-started-with-vuejs">Getting Started with Vue.js: Why Use it?</a></p>
+
+<p><img src="/assets/img/vue-wordpress-demo.gif" alt="demo-time.gif" />
+(Note how syntax errors are shown whenever the the codes are incomplete. <code>ProductCard</code> and <code>ProductListItem</code> are two different components that the <code>ProductList</code> component can use to render a product. <code>Row</code> and <code>Column</code> are simple wrappers around a CSS grid framework.)</p>
+
+<p>References:</p>
+
+<ul>
+<li><a href="https://gist.github.com/mblarsen/f628fc3c196b5f58d326242061922446">CodeSlot.vue</a></li>
+<li><a href="https://github.com/mblarsen/shortcode-tokenizer">shortcode-tokenizer</a></li>
+<li><a href="https://vuejs.org/v2/guide/render-function.html#Functional-Components">Functional Components in Vue</a></li>
+</ul>
     ]]></content>
 </entry>
     </feed>
