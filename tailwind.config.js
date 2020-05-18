@@ -10,6 +10,9 @@ module.exports = {
         normal: "1.6",
         loose: "1.75",
       },
+      maxHeight: {
+        "half-screen": "50vh",
+      },
       maxWidth: {
         none: "none",
         "7xl": "80rem",
