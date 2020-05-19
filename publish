@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+git checkout gh-pages
+git rebase master
+npm run production
+git add .
+git commit -m "Publish $(date)"
+git push origin $(git subtree split --prefix build_production):gh-pages --force
+
+# vim:set ft=bash:
